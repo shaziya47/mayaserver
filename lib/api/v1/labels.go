@@ -29,3 +29,8 @@ const (
 const (
 	DefaultOrchestratorConfigPath string = "/etc/mayaserver/orchprovider/"
 )
+
+const (
+	JivaNomadPlacementSpecs string = "placement.specs.openebs.io/jnp-specs"
+	JivaK8sPlacementSpecs   string = "placement.specs.openebs.io/jk8sp-specs"
+)
