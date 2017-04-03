@@ -1,5 +1,6 @@
 package v1
 
+// A type that acts on an infrastructure level i.e. orchestrator hosts
 type ContainerNetworkingLbl string
 
 const (
@@ -9,10 +10,12 @@ const (
 	CNInterfaceLbl       ContainerNetworkingLbl = "cn.openebs.io/interface"
 )
 
+// A type that acts on an infrastructure level i.e. orchestrator hosts
 type ContainerStorageLbl string
 
 const (
 	CSPersistenceLocationLbl ContainerStorageLbl = "cs.openebs.io/persistence-location"
+	CSReplicaCountLbl        ContainerStorageLbl = "cs.openebs.io/replica-count"
 )
 
 type RequestsLbl string

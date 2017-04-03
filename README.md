@@ -91,6 +91,7 @@ to get into the usage of OpenEBS without much of learning curve.
   
   ; Container Storage options
   cs-persistence-location = /tmp/
+  cs-replica-count = 2
   ```
 
 - Below is a sample volume spec that can be provisioned
@@ -144,13 +145,13 @@ to get into the usage of OpenEBS without much of learning curve.
       "evalpriority": "50",
       "evaltype": "service",
       "evaltrigger": "job-register",
-      "evaljob": "minjvol",
+      "evaljob": "myjivavol",
       "evalstatus": "complete",
       "evalstatusdesc": "",
       "evalblockedeval": "360ef0b3-e6dc-9353-d91c-d7c91c239102"
     },
     "creationTimestamp": null,
-    "name": "minjvol"
+    "name": "myjivavol"
   }
 
   # Info
@@ -171,10 +172,19 @@ to get into the usage of OpenEBS without much of learning curve.
     "Status": {
       "Message": "",
       "Phase": "",
-      "Reason": "pending"
+      "Reason": "running"
+    },
+    "annotations": {
+      "be.jiva.volume.openebs.io/vol-size": "3G",
+      "fe.jiva.volume.openebs.io/ip": "172.28.128.15",
+      "iqn": "iqn.2016-09.com.openebs.jiva:myjivavol",
+      "targetportal": "172.28.128.15:3260",
+      "JIVA_REP_IP_0": "172.28.128.16",
+      "JIVA_REP_IP_1": "172.28.128.8",
+      "be.jiva.volume.openebs.io/count": "2"
     },
     "creationTimestamp": null,
-    "name": "minjvol"
+    "name": "myjivavol"
   }
 
   # Delete
@@ -207,12 +217,12 @@ to get into the usage of OpenEBS without much of learning curve.
       "evalpriority": "50"
     },
     "creationTimestamp": null,
-    "name": "minjvol"
+    "name": "myjivavol"
   }
 
   # Info again
   
-  $ curl http://172.28.128.4:5656/latest/volume/info/minjvol
+  $ curl http://172.28.128.4:5656/latest/volume/info/myjivavol
 
   Unexpected response code: 404 (job not found)
     

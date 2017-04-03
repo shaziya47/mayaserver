@@ -16,13 +16,19 @@ const (
 	JivaFrontEndIPLbl JivaLbl = "fe.jiva.volume.openebs.io/ip"
 	JivaBackEndIPLbl  JivaLbl = "be.jiva.volume.openebs.io/ip"
 
+	// TODO remove this & use the generic v1.labels
 	JivaFrontEndAllIPsLbl JivaLbl = "fe.jiva.volume.openebs.io/all-ips"
 	JivaBackEndAllIPsLbl  JivaLbl = "be.jiva.volume.openebs.io/all-ips"
 
+	// TODO remove this & use the generic v1.labels
 	JivaFrontEndCountLbl JivaLbl = "fe.jiva.volume.openebs.io/count"
 	JivaBackEndCountLbl  JivaLbl = "be.jiva.volume.openebs.io/count"
 
-	JivaBackEndVolStor JivaLbl = "be.jiva.volume.openebs.io/vol-stor"
+	// TODO
+	// Make these namespaced
+	JivaTargetPortalLbl    JivaLbl = "targetportal"
+	JivaIqnLbl             JivaLbl = "iqn"
+	JivaBackEndIPPrefixLbl JivaLbl = "JIVA_REP_IP_"
 )
 
 const (

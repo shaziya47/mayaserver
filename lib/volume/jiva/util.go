@@ -9,6 +9,8 @@ package jiva
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/openebs/mayaserver/lib/api/v1"
 	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
@@ -210,12 +212,12 @@ func (j *jivaUtil) ProvisionStorage(pvc *v1.PersistentVolumeClaim) (*v1.Persiste
 		return nil, err
 	}
 
-	err = j.setCN(dc, pvc)
+	err = j.setCS(dc, pvc)
 	if err != nil {
 		return nil, err
 	}
 
-	err = j.setCS(dc, pvc)
+	err = j.setCN(dc, pvc)
 	if err != nil {
 		return nil, err
 	}
@@ -420,6 +422,9 @@ func (j *jivaUtil) setCS(dc string, pvc *v1.PersistentVolumeClaim) error {
 
 // setCN sets the container networking properties in a PersistentVolumeClaim
 // if not done so already.
+//
+// NOTE:
+// This should be invoked after invoking setCS.
 func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 
 	if pvc.Labels == nil {
@@ -460,23 +465,32 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	pvc.Labels[string(v1.CNSubnetLbl)] = subnet
 
 	// TODO
-	// Below is a tightly coupled design which makes sense of only
-	// one jiva controller & one jiva replica.
+	// Below makes sense of only one jiva controller & one or more replicas.
+
+	// Set the frontend IP & backend IPs
 	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" && pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
-		// Get three available IPs
-		ips, err := nethelper.GetAvailableIPs(networkCIDR, 3)
+
+		// Get one available IP for frontend
+		ips, err := nethelper.GetAvailableIPs(networkCIDR, 1)
 		if err != nil {
 			return err
 		}
 
+		// This sets the frontend IP
 		pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] = ips[0]
-		pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] = ips[1] + "," + ips[2]
+
+		// Now set the backend IPs
+		err = setBackendIPs(networkCIDR, pvc)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	}
 
+	// Set the frontend IP only
 	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" {
-		// Get one available IP
+		// Get one available IP for frontend
 		ips, err := nethelper.GetAvailableIPs(networkCIDR, 1)
 		if err != nil {
 			return err
@@ -487,17 +501,47 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 		return nil
 	}
 
+	// Set the backend IPs only
 	if pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
-		// Get two available IPs
-		ips, err := nethelper.GetAvailableIPs(networkCIDR, 2)
+
+		// Set the backend IPs
+		err = setBackendIPs(networkCIDR, pvc)
 		if err != nil {
 			return err
 		}
 
-		pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] = ips[0] + "," + ips[1]
-
 		return nil
 	}
+
+	return nil
+}
+
+// setBackendIPs sets the backend IPs when provided with a particular
+// network range & pvc that in turn has the backend count i.e. replica
+// count.
+func setBackendIPs(networkCIDR string, pvc *v1.PersistentVolumeClaim) error {
+
+	// Get the backend IP count
+	beCount := pvc.Labels[string(v1.CSReplicaCountLbl)]
+
+	iBECount, err := strconv.Atoi(beCount)
+	if err != nil {
+		return err
+	}
+
+	// Get all the backend IPs
+	ips, err := nethelper.GetAvailableIPs(networkCIDR, iBECount)
+	if err != nil {
+		return err
+	}
+
+	var strBEIPs string
+	for i := 0; i < iBECount; i++ {
+		strBEIPs = strBEIPs + ips[i] + ","
+	}
+
+	// Remove the trailing comma
+	pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] = strings.TrimSuffix(strBEIPs, ",")
 
 	return nil
 }

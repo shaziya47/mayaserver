@@ -27,6 +27,10 @@ const (
 	// location
 	DefaultNomadCSPersistenceLocation string = "/tmp/"
 
+	// This is the default Nomad orchestrator's container storage replica
+	// count
+	DefaultNomadCSReplicaCount string = "2"
+
 	// This is the default Nomad orchestrator config file. This typically
 	// points to Nomad config when Nomad is running in default region.
 	DefaultNomadConfigFile string = v1.DefaultOrchestratorConfigPath + "nomad_" + DefaultNomadRegionName + ".INI"

@@ -136,22 +136,21 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 
 	// Default storage policy would required 1 FE & 2 BE
 	feTaskName := "fe"
-	//feTaskName1 := "fe1"
 	beTaskName := "be"
-	//beTaskName1 := "be1"
-	//beTaskName2 := "be2"
 
 	jivaFeVersion := pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)]
 	jivaNetworkType := pvc.Labels[string(v1.CNTypeLbl)]
 	jivaFeIP := pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)]
 
-	//jivaBeIP := pvc.Labels[string(v1jiva.JivaBackEndIPLbl)]
+	jivaBEPersistentStor := pvc.Labels[string(v1.CSPersistenceLocationLbl)]
+	jivaBECount := pvc.Labels[string(v1.CSReplicaCountLbl)]
+	iJivaBECount, err := strconv.Atoi(jivaBECount)
+	if err != nil {
+		return nil, err
+	}
+
 	jivaBeIPs := pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)]
 	jivaBeIPArr := strings.Split(jivaBeIPs, ",")
-	jivaBeIP1 := jivaBeIPArr[0]
-	jivaBeIP2 := jivaBeIPArr[1]
-	jivaBEPersistentStor := pvc.Labels[string(v1.CSPersistenceLocationLbl)]
-
 	jivaFeSubnet := pvc.Labels[string(v1.CNSubnetLbl)]
 	jivaFeInterface := pvc.Labels[string(v1.CNInterfaceLbl)]
 
@@ -163,8 +162,10 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	// In addition, job's ENV property can source these metadata by interpreting
 	// them.
 	jobMeta := map[string]string{
-		"targetportal": jivaFeIP + ":" + v1jiva.JivaIscsiTargetPortalPort,
-		"iqn":          v1jiva.JivaIqnFormatPrefix + ":" + jivaVolName,
+		string(v1jiva.JivaBackEndVolSizeLbl): jivaBEVolSize,
+		string(v1jiva.JivaFrontEndIPLbl):     jivaFeIP,
+		string(v1jiva.JivaTargetPortalLbl):   jivaFeIP + ":" + v1jiva.JivaIscsiTargetPortalPort,
+		string(v1jiva.JivaIqnLbl):            v1jiva.JivaIqnFormatPrefix + ":" + jivaVolName,
 	}
 
 	// Jiva FE's ENV among other things interpolates Nomad's built-in properties
@@ -189,11 +190,16 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		"JIVA_REP_VERSION":  jivaFeVersion,
 		"JIVA_REP_NETWORK":  jivaNetworkType,
 		"JIVA_REP_IFACE":    jivaFeInterface,
-		// Group count index is suffixed in the property name
-		"JIVA_REP_IP_0": jivaBeIP1,
-		// Group count index is suffixed in the property name
-		"JIVA_REP_IP_1":   jivaBeIP2,
-		"JIVA_REP_SUBNET": jivaFeSubnet,
+		"JIVA_REP_SUBNET":   jivaFeSubnet,
+	}
+
+	// This sets below variables with backend IP addresses:
+	//
+	//  1. job's backend's ENV pairs
+	//  2. job's META pairs
+	err = setBEIPs(beEnv, jobMeta, jivaBeIPArr, iJivaBECount)
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO
@@ -233,7 +239,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 				},
 				Tasks: []*api.Task{
 					&api.Task{
-						Name:   feTaskName + "${NOMAD_ALLOC_INDEX}",
+						Name:   feTaskName,
 						Driver: "raw_exec",
 						Resources: &api.Resources{
 							CPU:      helper.IntToPtr(50),
@@ -265,7 +271,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 			&api.TaskGroup{
 				Name: helper.StringToPtr(beTaskGroup),
 				// Replica count
-				Count: helper.IntToPtr(2),
+				Count: helper.IntToPtr(iJivaBECount),
 				// We want the replicas to spread across hosts
 				// This ensures high availability
 				Constraints: []*api.Constraint{
@@ -280,7 +286,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 				// This has multiple replicas as tasks
 				Tasks: []*api.Task{
 					&api.Task{
-						Name:   beTaskName + "${NOMAD_ALLOC_INDEX}",
+						Name:   beTaskName,
 						Driver: "raw_exec",
 						Resources: &api.Resources{
 							CPU:      helper.IntToPtr(50),
@@ -310,6 +316,32 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 			},
 		},
 	}, nil
+}
+
+// setBEIPs sets jiva backend environment with all backend IP addresses
+func setBEIPs(beEnv, jobMeta map[string]string, jivaBeIPArr []string, iJivaBECount int) error {
+
+	if iJivaBECount == 0 {
+		return fmt.Errorf("Invalid replica count '0'")
+	}
+
+	if len(jivaBeIPArr) != iJivaBECount {
+		return fmt.Errorf("Replica IP count '%d' does not match replica count '%d'", len(jivaBeIPArr), iJivaBECount)
+	}
+
+	jobMeta[string(v1jiva.JivaBackEndCountLbl)] = strconv.Itoa(iJivaBECount)
+
+	var k, v string
+
+	for i := 0; i < iJivaBECount; i++ {
+		k = string(v1jiva.JivaBackEndIPPrefixLbl) + strconv.Itoa(i)
+		v = jivaBeIPArr[i]
+
+		beEnv[k] = v
+		jobMeta[k] = v
+	}
+
+	return nil
 }
 
 // TODO

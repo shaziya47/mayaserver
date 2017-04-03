@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/nomad/api"
@@ -47,6 +48,7 @@ const (
 //
 // ; Container Storage options
 // cs-persistence-location = /tmp/
+// cs-replica-count = 2
 type NomadConfig struct {
 	Datacenter map[string]*struct {
 		// Address of Nomad cluster
@@ -66,6 +68,9 @@ type NomadConfig struct {
 		// The backing persistent storage location on which
 		// containerized storage is supposed to operate
 		CSPersistenceLocation string `gcfg:"cs-persistence-location"`
+
+		// CSReplicaCount holds the default no. of storage replicas
+		CSReplicaCount string `gcfg:"cs-replica-count"`
 	}
 }
 
@@ -267,8 +272,8 @@ func (m *nomadUtil) CN(dcName string) (map[v1.ContainerNetworkingLbl]string, err
 }
 
 // CS provides the container storage options in key-value pairs.
-// These persistent storage data are supposed to be available in the target Nomad
-// cluster. These pairs are provided based on datacenter.
+// These persistent storage specific properties are supposed to be specific to
+// the target Nomad cluster. These pairs are provided based on datacenter.
 func (m *nomadUtil) CS(dcName string) (map[v1.ContainerStorageLbl]string, error) {
 
 	err := m.validateConf(dcName)
@@ -276,10 +281,17 @@ func (m *nomadUtil) CS(dcName string) (map[v1.ContainerStorageLbl]string, error)
 		return nil, err
 	}
 
+	persistLoc := m.getCSPersistenceLocation(dcName)
+	repCount, err := m.getCSReplicaCount(dcName)
+	if err != nil {
+		return nil, err
+	}
+
 	// build the cs map
 	cs := map[v1.ContainerStorageLbl]string{
 		// container persistent storage properties
-		v1.CSPersistenceLocationLbl: m.getCSPersistenceLocation(dcName),
+		v1.CSPersistenceLocationLbl: persistLoc,
+		v1.CSReplicaCountLbl:        repCount,
 	}
 
 	return cs, nil
@@ -345,6 +357,26 @@ func (m *nomadUtil) getCSPersistenceLocation(dcName string) string {
 	}
 
 	return m.nomadConf.Datacenter[dcName].CSPersistenceLocation
+}
+
+// getCSReplicaCount returns the default no. of replicas
+// as registered in the conf file (i.e. .INI file)
+func (m *nomadUtil) getCSReplicaCount(dcName string) (string, error) {
+
+	if m.nomadConf.Datacenter[dcName] != nil && m.nomadConf.Datacenter[dcName].CSReplicaCount == "" {
+		return v1nomad.DefaultNomadCSReplicaCount, nil
+	}
+
+	repCount, err := strconv.Atoi(m.nomadConf.Datacenter[dcName].CSReplicaCount)
+	if err != nil {
+		return "", fmt.Errorf("Invalid replica count '%s' provided. '%v'", m.nomadConf.Datacenter[dcName].CSReplicaCount, err)
+	}
+
+	if repCount == 0 {
+		return "", fmt.Errorf("Replica count can not be '0'")
+	}
+
+	return m.nomadConf.Datacenter[dcName].CSReplicaCount, nil
 }
 
 // readNomadConfig reads an instance of NomadConfig from config reader.
