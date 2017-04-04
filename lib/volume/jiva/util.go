@@ -470,8 +470,14 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	// Set the frontend IP & backend IPs
 	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" && pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
 
-		// Get one available IP for frontend
-		ips, err := nethelper.GetAvailableIPs(networkCIDR, 1)
+		iBECount, err := getBackendCount(pvc)
+		if err != nil {
+			return err
+		}
+
+		// Get one available IP for frontend & required amt i.e. replica count
+		// for backends/replicas
+		ips, err := nethelper.GetAvailableIPs(networkCIDR, 1+iBECount)
 		if err != nil {
 			return err
 		}
@@ -479,8 +485,9 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 		// This sets the frontend IP
 		pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] = ips[0]
 
-		// Now set the backend IPs
-		err = setBackendIPs(networkCIDR, pvc)
+		// Now set the backend IPs, after removing the 0th element which is already
+		// used as frontend IP
+		err = setBackendIPsAsString(ips[1:], pvc)
 		if err != nil {
 			return err
 		}
@@ -516,15 +523,26 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
-// setBackendIPs sets the backend IPs when provided with a particular
-// network range & pvc that in turn has the backend count i.e. replica
-// count.
-func setBackendIPs(networkCIDR string, pvc *v1.PersistentVolumeClaim) error {
+func getBackendCount(pvc *v1.PersistentVolumeClaim) (int, error) {
 
 	// Get the backend IP count
 	beCount := pvc.Labels[string(v1.CSReplicaCountLbl)]
 
 	iBECount, err := strconv.Atoi(beCount)
+	if err != nil {
+		return 0, err
+	}
+
+	return iBECount, nil
+
+}
+
+// setBackendIPs sets the backend IPs when provided with a particular
+// network range & pvc that in turn has the backend count i.e. replica
+// count.
+func setBackendIPs(networkCIDR string, pvc *v1.PersistentVolumeClaim) error {
+
+	iBECount, err := getBackendCount(pvc)
 	if err != nil {
 		return err
 	}
@@ -535,7 +553,19 @@ func setBackendIPs(networkCIDR string, pvc *v1.PersistentVolumeClaim) error {
 		return err
 	}
 
+	err = setBackendIPsAsString(ips, pvc)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func setBackendIPsAsString(ips []string, pvc *v1.PersistentVolumeClaim) error {
+
 	var strBEIPs string
+	iBECount := len(ips)
+
 	for i := 0; i < iBECount; i++ {
 		strBEIPs = strBEIPs + ips[i] + ","
 	}
@@ -544,6 +574,7 @@ func setBackendIPs(networkCIDR string, pvc *v1.PersistentVolumeClaim) error {
 	pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] = strings.TrimSuffix(strBEIPs, ",")
 
 	return nil
+
 }
 
 // Delete tries to delete the jiva volume via an orchestrator
