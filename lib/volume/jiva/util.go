@@ -523,6 +523,8 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// getBackendCount fetches the backend count i.e. no of replicas
+// from the provided Persistent Volume Claim
 func getBackendCount(pvc *v1.PersistentVolumeClaim) (int, error) {
 
 	// Get the backend IP count
@@ -530,6 +532,7 @@ func getBackendCount(pvc *v1.PersistentVolumeClaim) (int, error) {
 
 	iBECount, err := strconv.Atoi(beCount)
 	if err != nil {
+		// 0 is an invalid replica/backend count
 		return 0, err
 	}
 
@@ -538,8 +541,8 @@ func getBackendCount(pvc *v1.PersistentVolumeClaim) (int, error) {
 }
 
 // setBackendIPs sets the backend IPs when provided with a particular
-// network range & pvc that in turn has the backend count i.e. replica
-// count.
+// network range & pvc. PVC i.e. Persistent Volume Claim has the backend count
+// i.e. replica count.
 func setBackendIPs(networkCIDR string, pvc *v1.PersistentVolumeClaim) error {
 
 	iBECount, err := getBackendCount(pvc)
@@ -561,6 +564,9 @@ func setBackendIPs(networkCIDR string, pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// setBackendIPsAsString will set the backend ips label with a comma separated
+// list of IP addresses. These ip address(es) will be used during the creation
+// of jiva backend container(s).
 func setBackendIPsAsString(ips []string, pvc *v1.PersistentVolumeClaim) error {
 
 	var strBEIPs string
@@ -577,7 +583,7 @@ func setBackendIPsAsString(ips []string, pvc *v1.PersistentVolumeClaim) error {
 
 }
 
-// Delete tries to delete the jiva volume via an orchestrator
+// DeleteStorage tries to delete the jiva volume via an orchestrator
 func (j *jivaUtil) DeleteStorage(pv *v1.PersistentVolume) (*v1.PersistentVolume, error) {
 	orchestrator, err := j.aspect.GetOrchProvider()
 	if err != nil {

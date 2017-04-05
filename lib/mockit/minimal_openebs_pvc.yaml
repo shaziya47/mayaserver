@@ -2,7 +2,7 @@
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: spread1ctl2reps
+  name: twelf
 spec:
   accessModes:
     - ReadWriteOnce
