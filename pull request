@@ -1,82 +1,82 @@
-+package cmd
-+import(
-+"net"
-+"fmt"
-+"flag"
-+"os"
-+"strconv"
-+"github.com/openebs/mayaserver/lib/config"
-+
-+"github.com/mitchellh/cli"'
-+"github.com/openebs/mayaserver/lib/flaghelper"
-+)
-+type status command struct{
-+ meta
-+ ui cli.ui
-+ args string
-+}
-+fun verify(){
-+flag.usage=usage
-+flag.parse()
-+
-+args:=flag.args()
-+if len(args)<1{
-+ fmt.fprintf(os.stderr,"input port is missing.")
-+ os.exit(1)
-+}
-+
-+port:=args[0]
-+-,err:=strconv.parseunit(port,10,16)
-+if err!=nil{
-+fmt.fprintf(os.stderr,"invalid port%q:%s\n",port,err)
-+os.exit(1)
-+}
-+
-+ln,err:=net.listen("tcp",":"+port)
-+
+package cmd
+import(
+"net"
+"fmt"
+"flag"
+"os"
+"strconv"
+"github.com/openebs/mayaserver/lib/config"
+
+"github.com/mitchellh/cli"'
+"github.com/openebs/mayaserver/lib/flaghelper"
+)
+type status command struct{
+ meta
+ ui cli.ui
+ args string
+}
+fun verify(){
+flag.usage=usage
+flag.parse()
+
+args:=flag.args()
+if len(args)<1{
+ fmt.fprintf(os.stderr,"input port is missing.")
+ os.exit(1)
+}
+
+port:=args[0]
+-,err:=strconv.parseunit(port,10,16)
 if err!=nil{
-+fmt.fprintf(os.stderr,"cannot listen on port%q:%s\n",port,err)
-+os.exit(1)
-+}
-+
-+err=ln.close()
-+if err!=nil{
-+fmt.fprintf(os.stderr,"couldnot stop listening on port %q:%s\n",port,err)
-+os.exit(1)
-+}
-+
-+frmt.printf("tcp port %q is available\n",port)
-+os.exit(0)
-+}
-+func(c*statuscommand)readmayaconfig()*config.mayaconfig{
-+ var configpath string
-+cmdconfig:=&config.mayaconfig{
-+ ports:&config.ports{}
-+}
-+
-+ flags:=flag.newflagset("up",flag.continueonerror)
-+ flags.usage=func(){c.ui.error(c.help())}
-+
-+flags.var((*flaghelper.stringflag)(&confi',gpath),'config","config")
-+flags.stringvar(&cmdconfig.bindaddr,"bind","","")
-+flags.stringvar(&cmdconfig.nodename,"name","m-apiserver","")
-+
-+flags.stringvar(&cmdconfig.datadir,"data-dir","","")
-+flags.stringvar(&cmdconfig.logiclevel,"log-level","","")
-+}
-+
-+func(c*statuscommand)run(args string)int{
+fmt.fprintf(os.stderr,"invalid port%q:%s\n",port,err)
+os.exit(1)
+}
+
+ln,err:=net.listen("tcp",":"+port)
+
+if err!=nil{
+fmt.fprintf(os.stderr,"cannot listen on port%q:%s\n",port,err)
+os.exit(1)
+}
+
+err=ln.close()
+if err!=nil{
+fmt.fprintf(os.stderr,"couldnot stop listening on port %q:%s\n",port,err)
+os.exit(1)
+}
+
+frmt.printf("tcp port %q is available\n",port)
+os.exit(0)
+}
+func(c*statuscommand)readmayaconfig()*config.mayaconfig{
+ var configpath string
+cmdconfig:=&config.mayaconfig{
+ ports:&config.ports{}
+}
+
+ flags:=flag.newflagset("up",flag.continueonerror)
+ flags.usage=func(){c.ui.error(c.help())}
+
+flags.var((*flaghelper.stringflag)(&confi',gpath),'config","config")
+flags.stringvar(&cmdconfig.bindaddr,"bind","","")
+flags.stringvar(&cmdconfig.nodename,"name","m-apiserver","")
+
+flags.stringvar(&cmdconfig.datadir,"data-dir","","")
+flags.stringvar(&cmdconfig.logiclevel,"log-level","","")
+}
+
+func(c*statuscommand)run(args string)int{
 if config.vmbox_status=='running'
-+{
-+
-+mconfig:=c.readmayaconfig()
-+
-+ c.ui.output(out)
-+out:= fmt.sprintf("name ip ports status \n%-16s%-16s%d\t%-16s",
-+ mconfig.nodename,
-+ mconfig.bindaddr
-+ mconfig.ports,
-+ status)
-+
-+}
-+}
+{
+
+mconfig:=c.readmayaconfig()
+
+ c.ui.output(out)
+out:= fmt.sprintf("name ip ports status \n%-16s%-16s%d\t%-16s",
+ mconfig.nodename,
+ mconfig.bindaddr
+ mconfig.ports,
+ status)
+
+}
+}
